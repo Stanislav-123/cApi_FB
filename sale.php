@@ -16,6 +16,7 @@ $user_data = array_filter([
     'client_ip_address' => $client_ip_address ?? '',
     'client_user_agent' => $client_user_agent ?? '',
     'fbc' => $fbclid ?? '',
+    'fbp' => $fbp ?? '',
     'subscription_id' => $subscription_id ?? '',
     'fn' => $firstname ?? '',
     'ln' => $lastname ?? '',
@@ -25,11 +26,14 @@ $user_data = array_filter([
     'country' => $country ?? '',
 ], function ($v) { return $v !== null && $v !== ''; });
 
+$event_id = generate_event_id($event, $external_id ?? 'unknown', $event_time ?? time());
+
 $data = [
     'data' => [
         [
             'event_name' => $event,
-            'event_time' => time(),
+            'event_time' => $event_time ?? time(),
+            'event_id' => $event_id,
             'user_data' => $user_data,
             'custom_data' => [
                 'currency' => 'USD',
@@ -45,7 +49,7 @@ $data = [
 $url = sprintf(FB_EVENTS_ENDPOINT, $pixel_id);
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));

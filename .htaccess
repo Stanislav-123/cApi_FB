@@ -1,0 +1,29 @@
+# Отключить листинг директорий
+Options -Indexes
+
+# Защита конфигурационных файлов
+<FilesMatch "^(\.gitignore|\.git|composer\.json|composer\.lock|README\.md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Защита логов
+<FilesMatch "\.(log|jsonl|txt)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# PHP настройки безопасности
+<IfModule mod_php8.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value error_log /var/log/php_errors.log
+</IfModule>
+
+# Кодировка по умолчанию
+AddDefaultCharset UTF-8
+
+# Сжатие
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>

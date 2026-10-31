@@ -4,15 +4,18 @@
 $external_id = $_GET['external_id'] ?? null;
 
 // Timestamp (date или date_old из постбека)
-$time = isset($_GET['date']) ? (int) $_GET['date'] : (isset($_GET['date_old']) ? (int) $_GET['date_old'] : time());
+$event_time = isset($_GET['date']) ? (int) $_GET['date'] : (isset($_GET['date_old']) ? (int) $_GET['date_old'] : time());
 
-// Check for FBCLID presence (sub_id_10)
+// Check for FBCLID presence (sub_id_10) для формирования fbc
 $fbclid_raw = $_GET['sub_id_10'] ?? null;
 if (empty($fbclid_raw) || $fbclid_raw === "null" || $fbclid_raw === "{fbclid}" || $fbclid_raw === "{{fbclid}}") {
     $fbclid = '';
 } else {
-    $fbclid = (strpos($fbclid_raw, "fb.") !== false) ? $fbclid_raw : ("fb.1." . $time . "." . $fbclid_raw);
+    $fbclid = (strpos($fbclid_raw, "fb.") !== false) ? $fbclid_raw : ("fb.1." . $event_time . "." . $fbclid_raw);
 }
+
+// FBP cookie (sub_id_14) — если передается из браузерного пикселя
+$fbp = isset($_GET['sub_id_14']) && $_GET['sub_id_14'] !== '' && $_GET['sub_id_14'] !== 'null' ? trim((string) $_GET['sub_id_14']) : '';
 
 // Pixel ID (sub_id_11)
 $pixel_id = isset($_GET['sub_id_11']) ? trim((string) $_GET['sub_id_11']) : '';

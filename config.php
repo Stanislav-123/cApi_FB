@@ -2,9 +2,9 @@
 /**
  * Общая конфигурация apifb
  * Facebook Graph API: https://developers.facebook.com/docs/graph-api/
- * Актуальная версия (октябрь 2025): v24.0. Используем v22.0 как стабильную.
+ * Актуальная версия (октябрь 2026): v21.0. Используем v21.0 как стабильную.
  */
-define('FB_GRAPH_API_VERSION', 'v22.0');
+define('FB_GRAPH_API_VERSION', 'v21.0');
 define('FB_EVENTS_ENDPOINT', 'https://graph.facebook.com/' . FB_GRAPH_API_VERSION . '/%s/events');
 
 define('LOGS_DIR', __DIR__ . '/logs');
@@ -31,7 +31,11 @@ function apifb_log_entry($pixel_id, array $events, array $payload, $response, $h
     $entry = [
         'date'      => date(DATE_ATOM),
         'events'    => array_map(function ($e) {
-            return ['event_name' => $e['event_name'] ?? 'unknown', 'event_time' => $e['event_time'] ?? null];
+            return [
+                'event_name' => $e['event_name'] ?? 'unknown', 
+                'event_time' => $e['event_time'] ?? null,
+                'event_id' => $e['event_id'] ?? null
+            ];
         }, $events),
         'request'   => $logPayload,
         'response'  => $response,
@@ -39,6 +43,13 @@ function apifb_log_entry($pixel_id, array $events, array $payload, $response, $h
     ];
     $path = LOGS_DIR . '/' . log_file_for_pixel($pixel_id) . '.jsonl';
     file_put_contents($path, json_encode($entry) . "\n", FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * Генерация уникального event_id для дедупликации
+ */
+function generate_event_id($event_name, $external_id, $timestamp) {
+    return hash('sha256', $event_name . '_' . $external_id . '_' . $timestamp . '_' . uniqid('', true));
 }
 
 /**

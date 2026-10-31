@@ -47,11 +47,15 @@ if ($test_event_code !== null && $test_event_code !== '') {
     $payload['test_event_code'] = $test_event_code;
 }
 
-// event_time — текущее, если не задано
+// event_time — текущее, если не задано; event_id — если не задан, генерируем
 $t = time();
 foreach ($payload['data'] as &$ev) {
     if (empty($ev['event_time'])) {
         $ev['event_time'] = $t;
+    }
+    if (empty($ev['event_id'])) {
+        $external_id = isset($ev['user_data']['external_id']) ? $ev['user_data']['external_id'] : 'api_' . uniqid();
+        $ev['event_id'] = hash('sha256', ($ev['event_name'] ?? 'Event') . '_' . $external_id . '_' . $ev['event_time'] . '_' . uniqid('', true));
     }
 }
 unset($ev);
@@ -82,6 +86,7 @@ $logEntry = [
         return [
             'event_name' => $e['event_name'] ?? 'unknown',
             'event_time' => $e['event_time'] ?? null,
+            'event_id' => $e['event_id'] ?? null,
         ];
     }, $events),
     'request' => $logPayload,

@@ -101,6 +101,10 @@ foreach ($payload['data'] as &$ev) {
     if (empty($ev['event_time'])) {
         $ev['event_time'] = $t;
     }
+    if (empty($ev['event_id'])) {
+        $external_id = isset($ev['user_data']['external_id']) ? $ev['user_data']['external_id'] : 'resend_' . uniqid();
+        $ev['event_id'] = hash('sha256', ($ev['event_name'] ?? 'Event') . '_' . $external_id . '_' . $ev['event_time'] . '_' . uniqid('', true));
+    }
 }
 unset($ev);
 
@@ -125,7 +129,11 @@ $logPayload['access_token'] = '[REDACTED]';
 $logEntry = [
     'date'     => date(DATE_ATOM),
     'events'   => array_map(function ($e) {
-        return ['event_name' => $e['event_name'] ?? 'unknown', 'event_time' => $e['event_time'] ?? null];
+        return [
+            'event_name' => $e['event_name'] ?? 'unknown', 
+            'event_time' => $e['event_time'] ?? null,
+            'event_id' => $e['event_id'] ?? null
+        ];
     }, $eventsToSend),
     'request'  => $logPayload,
     'response' => $response,
