@@ -5,9 +5,11 @@ ini_set('display_startup_errors', 0);
 
 $event = "Purchase";
 
+require_once __DIR__ . '/config.php';
+check_ip_whitelist(); // Security: IP Whitelist
+
 require_once __DIR__ . '/legacyTrackerSpecificData.php';
 require_once __DIR__ . '/collectPersonalData.php';
-require_once __DIR__ . '/config.php';
 
 $user_data = array_filter([
     'em' => $em ?? '',
@@ -26,17 +28,18 @@ $user_data = array_filter([
     'country' => $country ?? '',
 ], function ($v) { return $v !== null && $v !== ''; });
 
-$event_id = generate_event_id($event, $external_id ?? 'unknown', $event_time ?? time());
+$validated_event_time = validate_event_time($event_time ?? null);
+$event_id = generate_event_id($event, $external_id ?? 'unknown', $validated_event_time);
 
 $data = [
     'data' => [
         [
             'event_name' => $event,
-            'event_time' => $event_time ?? time(),
+            'event_time' => $validated_event_time,
             'event_id' => $event_id,
             'user_data' => $user_data,
             'custom_data' => [
-                'currency' => 'USD',
+                'currency' => $currency ?? DEFAULT_CURRENCY,
                 'value' => (float) ($revenue ?? 1),
             ],
             'event_source_url' => $event_source_url ?? 'https://facebook.com/',
@@ -47,20 +50,11 @@ $data = [
 ];
 
 $url = sprintf(FB_EVENTS_ENDPOINT, $pixel_id);
-$ch = curl_init($url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+$result = curl_post_with_retry($url, $data);
 
-$response = curl_exec($ch);
-$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-apifb_log_entry($pixel_id, $data['data'], $data, $response, $httpCode);
+apifb_log_entry($pixel_id, $data['data'], $data, $result['response'], $result['http_code']);
 
 $raw_request = isset($_SERVER['REQUEST_URI'])
     ? ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '') . $_SERVER['REQUEST_URI'])
     : '';
-apifb_log_text($event, $external_id ?? '', $fbclid ?? '', $raw_request, $url, $data, $response);
+apifb_log_text($event, $external_id ?? '', $fbclid ?? '', $raw_request, $url, $data, $result['response']);

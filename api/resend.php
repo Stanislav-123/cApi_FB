@@ -100,29 +100,26 @@ $t = time();
 foreach ($payload['data'] as &$ev) {
     if (empty($ev['event_time'])) {
         $ev['event_time'] = $t;
+    } else {
+        $ev['event_time'] = validate_event_time($ev['event_time']);
     }
     if (empty($ev['event_id'])) {
         $external_id = isset($ev['user_data']['external_id']) ? $ev['user_data']['external_id'] : 'resend_' . uniqid();
         $ev['event_id'] = hash('sha256', ($ev['event_name'] ?? 'Event') . '_' . $external_id . '_' . $ev['event_time'] . '_' . uniqid('', true));
+    }
+    // Добавляем currency по умолчанию если это Purchase и не указано
+    if (($ev['event_name'] ?? '') === 'Purchase' && empty($ev['custom_data']['currency'])) {
+        if (!isset($ev['custom_data'])) {
+            $ev['custom_data'] = [];
+        }
+        $ev['custom_data']['currency'] = DEFAULT_CURRENCY;
     }
 }
 unset($ev);
 
 $url = sprintf(FB_EVENTS_ENDPOINT, $new_pixel_id);
 
-$ch = curl_init($url);
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_SSL_VERIFYPEER => true,
-    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-    CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => json_encode($payload),
-]);
-
-$response = curl_exec($ch);
-$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlErr  = curl_error($ch);
-curl_close($ch);
+$result = curl_post_with_retry($url, $payload);
 
 $logPayload = $payload;
 $logPayload['access_token'] = '[REDACTED]';
@@ -136,21 +133,21 @@ $logEntry = [
         ];
     }, $eventsToSend),
     'request'  => $logPayload,
-    'response' => $response,
-    'http_code'=> $httpCode,
+    'response' => $result['response'],
+    'http_code'=> $result['http_code'],
 ];
 
 $newLogName = log_file_for_pixel($new_pixel_id);
 $newLogPath = LOGS_DIR . '/' . $newLogName . '.jsonl';
 file_put_contents($newLogPath, json_encode($logEntry) . "\n", FILE_APPEND | LOCK_EX);
 
-$ok = ($httpCode >= 200 && $httpCode < 300) && empty($curlErr);
+$ok = ($result['http_code'] >= 200 && $result['http_code'] < 300) && empty($result['error']);
 
 $out = [
     'ok' => $ok,
-    'http_code' => $httpCode,
-    'response' => $response,
-    'curl_error' => $curlErr ?: null,
+    'http_code' => $result['http_code'],
+    'response' => $result['response'],
+    'curl_error' => $result['error'],
     'pixel_id' => $new_pixel_id,
     'events_sent' => count($eventsToSend),
 ];
