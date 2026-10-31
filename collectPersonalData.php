@@ -36,9 +36,14 @@ if (empty($_GET['phone']))
 }
 else
 {
-    $phone = str_replace(" ", '', $_GET['phone']);
-    $phone = str_replace("+", '', $phone);
-    $phone = intval($phone);
+    $phone = trim($_GET['phone']);
+    $phone = str_replace(" ", '', $phone);
+    $phone = str_replace("-", '', $phone);
+    $phone = str_replace("(", '', $phone);
+    $phone = str_replace(")", '', $phone);
+    if (strpos($phone, '+') !== 0 && strlen($phone) > 0) {
+        $phone = '+' . $phone;
+    }
     $phone = hash('sha256', $phone);
 }
 
@@ -56,14 +61,14 @@ if (empty($_GET['dob']))
 }
 else 
 {
-	$db = $_GET['db']; //Format: 19970216 = February, 16th 1997
+	$db = $_GET['dob']; //Format: 19970216 = February, 16th 1997
     $db = hash('sha256', $db);
 }
 
 if (empty($_GET['email'])) {
     $em = "";
 } else {
-    $em = mb_strtolower($_GET['email']);
+    $em = trim(mb_strtolower($_GET['email']));
     $em = hash('sha256', $em);
 }
 

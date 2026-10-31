@@ -1,0 +1,11 @@
+logs/
+*.jsonl
+*_facebook_log.txt
+.DS_Store
+.idea/
+.vscode/
+*.log
+vendor/
+composer.lock
+.env
+*.tmp
